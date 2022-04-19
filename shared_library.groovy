@@ -1,5 +1,5 @@
 def call(Map params = [:]){
-    def artifactoryUrl = "https://devel.crfhealth.com/artifactory"
+    def artifactoryUrl = "https://xxxx.yyyyy.com/artifactory"
     def artifactorySearchAPI= "${artifactoryUrl}/api/search/aql"
     def buildDir = "${env.WORKSPACE}".replace("\\", "/")
     def response = httpRequest url: "${artifactorySearchAPI}",
