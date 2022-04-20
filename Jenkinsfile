@@ -42,7 +42,7 @@ pipeline{
               steps{
                   cleanWs()
                   checkout scm
-                  git url: 'ssh://devel.crfhealth.com:29418/system-test',
+                  git url: 'ssh://aaaaa.cccccc.com:29418/system-test',
                       credentialsId: 'jenkins-git-ssh-sshkey-hki',
                       branch: 'master'
               }
