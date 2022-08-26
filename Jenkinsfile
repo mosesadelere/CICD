@@ -1,30 +1,13 @@
-pipeline{
-
-    parameters {
-        string(name: 'ARTIFACTORY_REPO', defaultValue: 'crf-test-local', description: '')
-        string(name: 'ARTIFACTORY_PATH', defaultValue: '', description: '')
-        string(name: 'SUITE_FOLDER', defaultValue: 'server', description: '')
-        string(name: 'SELECT_TESTS_BASED_ON_TAGS', defaultValue: '', description: '')
-        string(name: 'EXCLUDE', defaultValue: '', description: '')
-        string(name: 'NONCRITCAL', defaultValue: '', description: '')
-        string(name: 'TEST_ENVIRONMENT', defaultValue: 'replica', description: '')
-        string(name: 'TEST_REPO_BRANCH', defaultValue: '', description: '')
-        string(name: 'UPSTREAM_ID', defaultValue: '', description: '')
-        string(name: 'VARIABLES', defaultValue: '', description: '')
-        string(name: 'VARIABLEFILES', defaultValue: '', description: '')
-        string(name: 'REPORT_ZIP', defaultValue: '', description: '')
-    }
-      agent{
-          node{
-              label 'ta-win10-13'
-          }
-      }
+def call(Map params){
+    pipeline{
+      agent {
+        node {
+            label "${params.LABEL}"
+        }
+      }  
       options{
               disableConcurrentBuilds()
               skipDefaultCheckout(true)
-      }
-      libraries{
-             lib('validation-pipeline-libraries@master')
       }
       environment{
           PATH = "${env.PATH}" + ";C:\\Apps\\jq-6;C:\\Program Files\\Git\\bin;C:\\Program Files\\Git\\usr\\bin;C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python37\\Scripts;C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python37;c:\\Windows\\System32"
@@ -35,21 +18,27 @@ pipeline{
           LPATH="/c/Apps/jq-6:$CHROME_DRIVER:$ORACLE_HOME:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools:$ANDROID_HOME/build-tools:$JAVA_HOME/bin:$PATH"
       }
       stages{
-           stage('Checkout'){
-              when {
-                  triggeredBy cause: 'UserIdCause'
+           stage('Checkout system-test'){
+              when{
+                anyOf{
+                    triggeredBy 'TimerTrigger';
+                    triggeredBy cause: 'UserIdCause';
+                    triggeredBy 'BuildUpstreamCause'
+                }
               }
               steps{
-                  cleanWs()
-                  checkout scm
-                  git url: 'ssh://aaaaa.cccccc.com:29418/system-test',
-                      credentialsId: 'jenkins-git-ssh-sshkey-hki',
-                      branch: 'master'
+                script {
+                    validationRunner.checkoutRepo("${params.TEST_REPO_BRANCH}")
+                }
               }
            }
-           stage('Test'){
+           stage('Run System Test'){
               when {
-                  triggeredBy cause: 'UserIdCause'
+                anyOf {
+                    triggeredBy 'TimerTrigger';
+                    triggeredBy cause: 'UserIdCause';
+                    triggeredBy 'BuildUpstreamCause'
+                }
               }
               steps{
                  script{
@@ -59,17 +48,19 @@ pipeline{
            }
            stage('Upload artifacts'){
                when {
-                   triggeredBy cause: 'UserIdCause'
+                expression { params.PROJECT != null }
                }
                steps{
                    script{
-                       publishResults(params)
+                    publishResults(params)
                    }
                }
            }
       }
       post {
           always {
+              archiveArtifacts artifacts: 'tests/output/*.zip, tests/output/*.xml, tests/output/*.png, tests/output/*.jpg, tests/output/*.log, tests/output/*.txt',
+              allowEmptyArchive: true
               catchError(buildResult: 'SUCCESS',
                          message: 'Error publishing test results. No results?')
               {
@@ -86,7 +77,5 @@ pipeline{
               }  
           }
       }
+    }
 }
-
-
-
